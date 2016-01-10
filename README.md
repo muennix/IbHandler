@@ -1,4 +1,4 @@
-IbHandler - An easy-to-use interface to Interactive Brokers trading system
+IbHandler - An easy-to-use interface to the Interactive Brokers trading system
 ==============================================================================
 released 10 Jan 2016
 
