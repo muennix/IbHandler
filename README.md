@@ -111,8 +111,7 @@ Market on close order, must be submitted 10 to 15 minutes before market close, d
 The module implements the logging class. Default log-level is INFO, to change that, initialize by 
 
 	import logging
-	mxh = IbHandler.mxIBhandler(account= "UXXXXXXX", 
-	loglevel = logging.DEBUG)
+	mxh = IbHandler.mxIBhandler(account= "UXXXXXXX", loglevel = logging.DEBUG)
 
 The logging instance is located at mxh.logger in case you want to modify it directly, e.g., to divert the output to a file. 
 
