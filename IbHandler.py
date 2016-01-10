@@ -644,23 +644,3 @@ class mxIBhandler(object):
 		sleep(10)
 		self.con.disconnect()
         
-
-
-# mxh = mxIBhandler()
-
-# print mxh.get_available_cash()
-# contract = Contract()
-# contract.m_symbol = 'IBM'
-# contract.m_secType = 'STK'
-# contract.m_exchange = 'SMART'
-# contract.m_currency = 'USD'
-
-# mxh.log[10] = LogEntry(timestamp = datetime.datetime.today().isoformat())
-# mxh.con.reqMktData(10, contract, '', True)
-# sleep(2)
-# print mxh.log[10]
-
-# print mxh.portfolio
-
-# mxh.release()
-# del mxh
