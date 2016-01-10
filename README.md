@@ -115,5 +115,10 @@ The module implements the logging class. Default log-level is INFO, to change th
 
 The logging instance is located at mxh.logger in case you want to modify it directly, e.g., to divert the output to a file. 
 
+###Close connection
+In order to close the conenction and get (if applicable) an overview of currently open orders, run
+
+	mxh.release()
+
 [1]: https://code.google.com/p/ibpy/
 [2]: https://github.com/blampe/IbPy
