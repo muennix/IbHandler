@@ -43,8 +43,7 @@ or let's check multiple prices at once
 	
 you can get hundreds of prices this way. They are automatically split up in blocks of 50 symbols that are requested at once. If you want to increase this number, e.g., because your account allows a larger number of concurrent lines of real-time market data, you can do it by
 	
-	mxh.getprices(symbols,timeout=10, pricetype="BID", 
-	maxdatalines = 100)
+	mxh.getprices(symbols,timeout=10, pricetype="BID", maxdatalines = 100)
 	
 If you want to specify the primary exchange on which the market data should be gathered, use the primExchDict parameter to provide a dict with Symbol->Exchange tuples. Please refer to the source code for more information.
 
@@ -91,8 +90,7 @@ Now, let's set the price in the middle of the bid/ask spread, but the order shou
 
 The order is automatically readjusted regarding ba_offest 5 times in total every 15 seconds. If you want to change that, do initialize by
 
-	mxh = IbHandler.mxIBhandler(account="UXXXXXXX", 
-	limit_adjust_interval = 15, max_adjust_time=10)
+	mxh = IbHandler.mxIBhandler(account="UXXXXXXX", limit_adjust_interval = 15, max_adjust_time=10)
 
 You can manually trigger the readjusting of orders placed by place_limitorder_quote by calling 
 
