@@ -28,6 +28,8 @@ It's simple. Here are some examples. First, let's create an instance:
 	import IbHandler
 	mxh = IbHandler.mxIBhandler(account="UXXXXXXX")
 	
+The connection instance is stored in mxh.con if you would like to access it directly.
+	
 Let's check the liquid funds available in a given currency, e.g. USD:
 
 	mxh.get_available_cash(currency = "USD")
@@ -61,7 +63,7 @@ Currency in USD by default and exchange is set to SMART. If you want to change t
 
 or create the contract by calling ib.ext.Contract() directly
 
-Now, let's buy 100 stocks Google with a limit price of $714.23.
+Now, let's buy 100 shares of Google with a limit price of $714.23.
 
 	mxh.place_limitorder(contract,100,714.23,"BUY")
 	
@@ -71,7 +73,7 @@ If you want to provide your own identifier for logging purposes (see below), you
 	
 otherwise, the current system timestamp in ms resolution is used.
 
-Next step: Market order. Lets by Google at the current market price, but as a precaution, only execute the order if the current price is above $700. The current BID quote is gathered just before executing the trade
+Next step: Market order. Lets buy 100 Google shares at the current market price, but as a precaution, only execute the order if the current price is above $700. The current BID quote is gathered just before executing the trade
 
 	mxh.place_order_quote(contract,100,700.,"BUY")
 	
@@ -82,6 +84,8 @@ If you would like to override this precaution and hist buy the stock "blind", yo
 At any point, open or partially executed orders are stored in
 
 	mxh.openorders
+	
+Once fully executed, the are removed from mxh.openorders, so you can use it to keep track of orders. More detailled information can be obtained through the logging (see below) or by overiding IbHandler.mxIBhandler.orderStatusHandler (or by registering your own handler with mxh.con.register).
 
 ###Advanced orders
 Now, let's set the price in the middle of the bid/ask spread, but the order should not be placed if the current BID price is under $700
@@ -116,7 +120,7 @@ The module implements the logging class. Default log-level is INFO, to change th
 The logging instance is located at mxh.logger in case you want to modify it directly, e.g., to divert the output to a file. 
 
 ###Close connection
-In order to close the conenction and get (if applicable) an overview of currently open orders, run
+In order to gracefully close the conenction and get (if applicable) an overview of currently open orders, call
 
 	mxh.release()
 
