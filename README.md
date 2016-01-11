@@ -1,5 +1,8 @@
-IbHandler - An easy-to-use interface to the Interactive Brokers trading system
-==============================================================================
+IbHandler
+=================================================================
+
+An easy-to-use Python handler to the Interactive Brokers trading system.
+
 released 10 Jan 2016
 
 About
@@ -8,7 +11,7 @@ IbHandler implements the IbPy wrapper of the Interactive Brokers API [1] with re
 
 Installation
 ------------------------------------------------------------------------------
-IbHandler requires Python 2.6 or newer. The easiest way of installing is by cloning (or downloading) this repository 
+IbHandler requires Python 2.6 or newer. The easiest way of installing is by cloning (or downloading) this repository by
 
 	git clone https://github.com/muennix/IbHandler.git
 
@@ -16,7 +19,7 @@ and installing the Python module by running
 
 	Python setup.py install
 
-The above command should atomically download and install the IbPy module in case you  have not already installed it.
+The above command should atomically download and install the IbPy module from github in case you  have not already installed it.
 
 
 How to use IbHandler?
@@ -30,33 +33,33 @@ It's simple. Here are some examples. First, let's create an instance:
 	
 The connection instance is stored in mxh.con if you would like to access it directly.
 	
-Let's check the liquid funds available in a given currency, e.g. USD:
+Let's check the liquid funds available in a given currency, e.g. USD (Note: This function is synchronous):
 
 	mxh.get_available_cash(currency = "USD")
 	
-Now, let's see what the current BID price of Apple looks like
+Now, let's see what the current BID price of Apple looks like (also a synchronous function):
 
 	mxh.getprice("AAPL",pricetype="BID")
 	
-or let's check multiple prices at once
+or let's check multiple prices at once (synchronous as well):
 
 	symbols = ["AAPL","GOOG","NFLX","MSFT","IBM"]
 	mxh.getprices(symbols,timeout=10, pricetype="BID")
 	
-you can get hundreds of prices this way. They are automatically split up in blocks of 50 symbols that are requested at once. If you want to increase this number, e.g., because your account allows a larger number of concurrent lines of real-time market data, you can do it by
+you can get hundreds of prices this way. They are automatically split up in blocks of 50 symbols that are requested at once. If you want to increase this number, e.g., because your account allows a larger number of concurrent lines of real-time market data, you can do this by
 	
 	mxh.getprices(symbols,timeout=10, pricetype="BID", maxdatalines = 100)
 	
 If you want to specify the primary exchange on which the market data should be gathered, use the primExchDict parameter to provide a dict with Symbol->Exchange tuples. Please refer to the source code for more information.
 
 ### Placing orders
-WARNING: Although I am using this interface in a productive environment, it still in beta and it might not work properly in your envorement. Please test extensively with a paper trading account before placing orders on an actual account!
+WARNING: Although I am using this interface in a productive environment, it is still in beta and it might not work properly in your envorement. Please test extensively with a paper trading account before placing orders on an actual account. Use at your own risk!
 
 In order to place an order, we first create a contract:
 
 	contract = IbHandler.makeStkContract("GOOG")
 
-Currency in USD by default and exchange is set to SMART. If you want to change this, you can do so by
+Currency is USD by default and exchange is set to SMART. If you want to change this, you can do so by
 
 	contract.m_currency = 'EUR'
 	contract.m_exchange = 'IBIS'	
@@ -85,7 +88,7 @@ At any point, open or partially executed orders are stored in
 
 	mxh.openorders
 	
-Once fully executed, the are removed from mxh.openorders, so you can use it to keep track of orders. More detailled information can be obtained through the logging (see below) or by overiding IbHandler.mxIBhandler.orderStatusHandler (or by registering your own handler with mxh.con.register).
+Once fully executed, they are removed from mxh.openorders, so you can use it to keep track of orders. More detailled information can be obtained through mxh.logger (see below) or by overiding IbHandler.mxIBhandler.orderStatusHandler (or by registering your own handler though mxh.con.register).
 
 ###Advanced orders
 Now, let's set the price in the middle of the bid/ask spread, but the order should not be placed if the current BID price is under $700
@@ -106,7 +109,7 @@ Pegged MID (exchange is automatically changed to ISLAND):
 
 	mxh.place_peggedmid_order(contract,100,713,"BUY")
 
-Market on close order, must be submitted 10 to 15 minutes before market close, depending on the exchange
+MOC (market on close) order. Must be submitted 10 to 15 minutes before the market closes, depending on the exchange
 	
 	mxh.place_moc_order(contract,100,"BUY")
 
@@ -117,7 +120,11 @@ The module implements the logging class. Default log-level is INFO, to change th
 	import logging
 	mxh = IbHandler.mxIBhandler(account= "UXXXXXXX", loglevel = logging.DEBUG)
 
-The logging instance is located at mxh.logger in case you want to modify it directly, e.g., to divert the output to a file. 
+The logging instance is located at
+
+	mxh.logger
+	
+in case you want to modify it directly, e.g., to divert the output to a file. 
 
 ###Close connection
 In order to gracefully close the conenction and get (if applicable) an overview of currently open orders, call
