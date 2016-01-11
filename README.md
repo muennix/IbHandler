@@ -46,14 +46,14 @@ or let's check multiple prices at once (synchronous as well):
 	symbols = ["AAPL","GOOG","NFLX","MSFT","IBM"]
 	mxh.getprices(symbols,timeout=10, pricetype="BID")
 	
-you can get hundreds of prices this way. They are automatically split up in blocks of 50 symbols that are requested at once. If you want to increase this number, e.g., because your account allows a larger number of concurrent lines of real-time market data, you can do this by
+you can retrieve hundreds of quotes this way. They are automatically split up in blocks of 50 symbols that are requested at once. If you want to increase this number, e.g., because your account allows a larger number of concurrent lines of real-time market data, you can do this by
 	
 	mxh.getprices(symbols,timeout=10, pricetype="BID", maxdatalines = 100)
 	
 If you want to specify the primary exchange on which the market data should be gathered, use the primExchDict parameter to provide a dict with Symbol->Exchange tuples. Please refer to the source code for more information.
 
 ### Placing orders
-WARNING: Although I am using this interface in a productive environment, it is still in beta and it might not work properly in your envorement. Please test extensively with a paper trading account before placing orders on an actual account. Use at your own risk!
+WARNING: Although I am using this interface in a productive environment, it is still in beta and it might not work properly in your environment. Please test extensively with a paper trading account before placing orders on an actual account. Use at your own risk!
 
 In order to place an order, we first create a contract:
 
@@ -64,40 +64,41 @@ Currency is USD by default and exchange is set to SMART. If you want to change t
 	contract.m_currency = 'EUR'
 	contract.m_exchange = 'IBIS'	
 
-or create the contract by calling ib.ext.Contract() directly
+or create the contract by calling ib.ext.Contract() directly.
 
 Now, let's buy 100 shares of Google with a limit price of $714.23.
 
-	mxh.place_limitorder(contract,100,714.23,"BUY")
+	oid = mxh.place_limitorder(contract,100,714.23,"BUY")
 	
-If you want to provide your own identifier for logging purposes (see below), you can do it by
+All functions that are placing orders return the order id that was assigned to the order by Interactive Brokers. If you want to additionally provide your own identifier for logging purposes (see below), you can do it by
 
-	mxh.place_limitorder(contract,100,714.23,"BUY",unique_ID=123)
+	oid = mxh.place_limitorder(contract,100,714.23,"BUY",unique_ID=123)
 	
 otherwise, the current system timestamp in ms resolution is used.
 
 Next step: Market order. Lets buy 100 Google shares at the current market price, but as a precaution, only execute the order if the current price is above $700. The current BID quote is gathered just before executing the trade
 
-	mxh.place_order_quote(contract,100,700.,"BUY")
+	oid = mxh.place_order_quote(contract,100,700.,"BUY")
 	
 If you would like to override this precaution and hist buy the stock "blind", you can do so by 
 
-	mxh.place_order_quote(contract,100,0,"BUY")
+	oid = mxh.place_order_quote(contract,100,0,"BUY")
 
-At any point, open or partially executed orders are stored in
+At any point, open or partially executed orders are stored in the dict mxh.openorders with the order id as keys. Given the above example, you can check the current status of the order by
 
-	mxh.openorders
+	if oid in mxh.openorders:
+		print mxh.openorders[oid]
 	
-Once fully executed, they are removed from mxh.openorders, so you can use it to keep track of orders. More detailled information can be obtained through mxh.logger (see below) or by overiding IbHandler.mxIBhandler.orderStatusHandler (or by registering your own handler though mxh.con.register).
+Once fully executed (or cancelled by the exchange), they are removed from mxh.openorders, so you can use it to keep track of orders. More detailed information can be obtained through mxh.logger (see below), by overriding IbHandler.mxIBhandler.orderStatusHandler or by registering your own handler though mxh.con.register.
 
 ###Advanced orders
 Now, let's set the price in the middle of the bid/ask spread, but the order should not be placed if the current BID price is under $700
 
-	mxh.place_limitorder_quote(contract,100,700,"BUY",ba_offset=0.5)
+	oid = mxh.place_limitorder_quote(contract,100,700,"BUY",ba_offset=0.5)
 
 The order is automatically readjusted regarding ba_offest 5 times in total every 15 seconds. If you want to change that, do initialize by
 
-	mxh = IbHandler.mxIBhandler(account="UXXXXXXX", limit_adjust_interval = 15, max_adjust_time=10)
+	oid = mxh = IbHandler.mxIBhandler(account="UXXXXXXX", limit_adjust_interval = 15, max_adjust_time=10)
 
 You can manually trigger the readjusting of orders placed by place_limitorder_quote by calling 
 
@@ -107,11 +108,11 @@ You can manually trigger the readjusting of orders placed by place_limitorder_qu
 
 Pegged MID (exchange is automatically changed to ISLAND):
 
-	mxh.place_peggedmid_order(contract,100,713,"BUY")
+	oid = mxh.place_peggedmid_order(contract,100,713,"BUY")
 
 MOC (market on close) order. Must be submitted 10 to 15 minutes before the market closes, depending on the exchange
 	
-	mxh.place_moc_order(contract,100,"BUY")
+	oid = mxh.place_moc_order(contract,100,"BUY")
 
 ###Logging
 
@@ -127,7 +128,7 @@ The logging instance is located at
 in case you want to modify it directly, e.g., to divert the output to a file. 
 
 ###Close connection
-In order to gracefully close the conenction and get (if applicable) an overview of currently open orders, call
+In order to gracefully close the connection and get (if applicable) an overview of currently open orders, call
 
 	mxh.release()
 
