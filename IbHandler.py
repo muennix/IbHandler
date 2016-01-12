@@ -6,7 +6,6 @@ from ib.opt import ibConnection, message
 from time import sleep, strftime, localtime
 import cPickle as cpickle
 from threading import *
-#from rcdtype import *
 import datetime
 import sys
 from threading import Timer
@@ -148,7 +147,6 @@ class mxIBhandler(object):
 		self.adjist_limits_thread = None
 		self.max_adjust_time = datetime.timedelta(minutes=max_adjust_time)
 
-
 		#register callback handlers
 		self.con.register(self.updateAccountValueHandler, message.updateAccountValue)
 		self.con.register(self.updatePortfolioHandler, message.updatePortfolio)
@@ -164,7 +162,6 @@ class mxIBhandler(object):
 
 		self.con.reqAccountUpdates(True, self._account)
 
-		#if not (self.__connected == True):
 		if not (self.__updatePortfolioEvent.wait(timeout=10) and (self.__connected == True)):
 			self.logger.error("mxIBhandler connection timeout")
 			raise IOError("Connection timeout")
@@ -274,7 +271,6 @@ class mxIBhandler(object):
 		self.__SyncStockGetOrderID = self.NextOrderID
 		self.con.reqMktData(self.__SyncStockGetOrderID, contract, '', True) #only request snapshot
 		self.__SyncStockGetEvent.clear()
-		#print "getprice: requesting",sym, "id", self.__SyncStockGetOrderID
 		if not self.__SyncStockGetEvent.wait(timeout=timeout):
 			self.logger.error("getprice: timeout")
 		self.NextOrderID += 1
