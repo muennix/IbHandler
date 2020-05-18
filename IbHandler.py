@@ -657,12 +657,31 @@ class mxIBhandler(object):
 
 
 	#market on close
-	def place_moc_order(self,contract,vollume,action, unique_ID=""):
-		if unique_ID == "":
-			unique_ID = current_milli_time
+	def place_moc_order(self,contract,vollume,action, unique_ID, allow_short = False):
 		orderid = self.NextOrderID
 		self.NextOrderID += 1
 		order = makeStkOrder(vollume, action, self._account, ordertype="MOC")
+		order.m_outsideRth = False #does not make sense for MOC
+
+		if allow_short == False and action == "SELL":
+			if contract.m_symbol in self.__portfolio and self.__portfolio[contract.m_symbol].position < vollume:
+				this_vol = self.__portfolio[contract.m_symbol].position
+				if this_vol < 0:
+					self.logger.warning("Not submitting MOC order for %s because the position currently held short (%s)",contract.m_symbol, this_vol)
+					return -1
+				else:
+					self.logger.warning("Reducing MOC order for %s to %s (position currently held) as no short selling is allowed",contract.m_symbol, this_vol)
+					vollume = self.__portfolio[contract.m_symbol].position
+			elif  contract.m_symbol not in self.__portfolio or self.__portfolio[contract.m_symbol].position == 0:
+				self.logger.warning("No position of %s currently held and allow_short = False. Not placing order.",contract.m_symbol)
+				return -1
+
+		self.logger.info("Placing MOC order for %s with id %s",contract.m_symbol, orderid)
+
+		self.openorders[orderid] = OpenOrder(contract,vollume,None,None,"BUY")
+		self.openorders[orderid].ordertype = "MOC"
+		self.openorders[orderid].adjust_periodical = False
+		self.openorders[orderid].market_data_subscribed = False
 
 		self.__MapToOriginalOrderID[orderid] = orderid
 		self.con.reqMktData(orderid, contract, '', True) #only for log
@@ -670,9 +689,10 @@ class mxIBhandler(object):
 		self.con.placeOrder(orderid ,contract,order)
 		self.__OrdersFinished.clear()
 
-		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = 0, limitprice = -1)
+		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = 0, limitprice = None, unique_ID = unique_ID)
 		self.log[orderid].action = action
 		self.log[orderid].ordertype = "MOC"
+
 
 
 	def adjust_limits(self):
