@@ -148,14 +148,14 @@ class mxIBhandler(object):
 		self.max_adjust_time = datetime.timedelta(minutes=max_adjust_time)
 
 		#register callback handlers
-		self.con.register(self.updateAccountValueHandler, message.updateAccountValue)
-		self.con.register(self.updatePortfolioHandler, message.updatePortfolio)
-		self.con.register(self.accountDownloadEndHandler, message.accountDownloadEnd)
-		self.con.register(self.tickPriceHandler, message.tickPrice)
-		self.con.register(self.tickSizeHandler, message.tickSize)
-		self.con.register(self.nextValidIdHandler, message.nextValidId)
-		self.con.register(self.orderStatusHandler, message.orderStatus)
-		self.con.register(self.errorHandler, message.error)
+		self.con.register(self.updateAccountValueHandler, 'UpdateAccountValue')
+		self.con.register(self.updatePortfolioHandler, 'UpdatePortfolio')
+		self.con.register(self.accountDownloadEndHandler, 'AccountDownloadEnd')
+		self.con.register(self.tickPriceHandler, 'TickPrice')
+		self.con.register(self.tickSizeHandler, 'TickSize')
+		self.con.register(self.nextValidIdHandler, 'NextValidId')
+		self.con.register(self.orderStatusHandler, 'OrderStatus')
+		self.con.register(self.errorHandler, 'Error')
 
 		self.logger.debug("mxIBhandler connecting...")
 		self.con.connect()
