@@ -693,6 +693,7 @@ class mxIBhandler(object):
 		self.log[orderid].action = action
 		self.log[orderid].ordertype = "MOC"
 
+		return orderid
 
 
 	def adjust_limits(self):
