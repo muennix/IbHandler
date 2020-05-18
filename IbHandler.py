@@ -10,6 +10,7 @@ import datetime
 import sys
 from threading import Timer
 import logging
+from ib.ext.ExecutionFilter import ExecutionFilter
 
 TickTypeBidSize = 0
 TickTypeBid = 1
@@ -36,7 +37,7 @@ def makeStkOrder(shares,action,account,ordertype='MKT'):
 
 def makeStkContract(symbol, cur = 'USD'):
     contract = Contract()
-    contract.m_symbol = symbol
+    contract.m_symbol = symbol.replace('.',' ').replace('_',' ').replace('-',' ')
     contract.m_secType = 'STK'
     contract.m_exchange = 'SMART'
     contract.m_currency = cur
@@ -56,7 +57,7 @@ class OpenOrder(object):
 		self.prev_close = None #only used for consitency checks
 		self.ba_offset = 0
 		self.placed = False
-		self.canceled = True
+		self.canceled = False
 		self.last_adjust = None
 		self.placed_date = datetime.datetime.today()
 		self.adjust_periodical = False
@@ -83,6 +84,7 @@ class LogEntry(object):
 		self.vollume = None
 		self.close = None
 		self.avg_fill_price = None
+		self.avg_costs = None
 		self.fill_date = None
 		self.limt_price = None
 		self.action = None
@@ -90,13 +92,15 @@ class LogEntry(object):
 		self.ordertype = None
 		self.ba_offset = None
 		self.unique_ID = unique_ID
+		self.commission = None
+		self.canceled = False
 
 
 	def __repr__(self):
 		return self.getlogstr().replace("\t"," ")
 
 	def getlogstr(self):
-		return str(self.timestamp)+"\t"+str(self.symbol)+"\t"+str(self.ordervollume)+"\t"+str(self.action)+"\t"+str(self.ordertype)+"\t"+str(self.targeted_price)+"\t"+str(self.limitprice)+"\t"+str(self.bid)+"\t"+str(self.ask)+"\t"+str(self.ba_offset)+"\t"+str(self.bidsize)+"\t"+str(self.asksize)+"\t"+str(self.last)+"\t"+str(self.lastsize)+"\t"+str(self.high)+"\t"+str(self.low)+"\t"+str(self.vollume)+"\t"+str(self.close)+"\t"+str(self.avg_fill_price)+"\t"+str(self.fill_date)+"\t"+str(self.limt_price)+"\t"+str(self.valid_until)+"\t"+str(self.unique_ID)
+		return str(self.timestamp)+"\t"+str(self.symbol)+"\t"+str(self.ordervollume)+"\t"+str(self.action)+"\t"+str(self.ordertype)+"\t"+str(self.targeted_price)+"\t"+str(self.limitprice)+"\t"+str(self.bid)+"\t"+str(self.ask)+"\t"+str(self.ba_offset)+"\t"+str(self.bidsize)+"\t"+str(self.asksize)+"\t"+str(self.last)+"\t"+str(self.lastsize)+"\t"+str(self.high)+"\t"+str(self.low)+"\t"+str(self.vollume)+"\t"+str(self.close)+"\t"+str(self.avg_fill_price)+"\t"+str(self.fill_date)+"\t"+str(self.limt_price)+"\t"+str(self.valid_until)+"\t"+str(self.unique_ID)+"\t"+str(self.commission)
 
 
 def PrintProgress(Size, totalSize):
@@ -114,11 +118,13 @@ class mxIBhandler(object):
 		self.logger.setLevel(loglevel)
 		#logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-		self.con = ibConnection()
+		self.con = ibConnection(port=7496)
 		self.NextOrderID = 100
 		self.__connected = True
 
 		self.available_cash = dict()
+		self.net_liquidation = dict()
+		self.buyingpower = dict()
 		self.__updatePortfolioEvent = Event()
 		self.__updatePortfolioEvent.clear()
 
@@ -132,6 +138,12 @@ class mxIBhandler(object):
 		self.__SyncStockGetEvent.set()
 		self.__SyncStockGetPrice = None
 		self.__SyncStockGetType = TickTypeBid 
+
+		self.__SyncExecDetailsReqID = None
+		self.__SyncExecDetailsEvent = Event()
+		self.__SyncExecDetailsEvent.set()
+
+		self.__MapExecIdtoOrderId = dict()
 
 		self.__SyncStockGetMultipleEvent = Event()
 		self.__SyncStockGetMultipleEvent.set()
@@ -156,6 +168,10 @@ class mxIBhandler(object):
 		self.con.register(self.nextValidIdHandler, 'NextValidId')
 		self.con.register(self.orderStatusHandler, 'OrderStatus')
 		self.con.register(self.errorHandler, 'Error')
+
+		self.con.register(self.execDetailsHandler, 'ExecDetails')
+		self.con.register(self.execDetailsEndHandler, 'ExecDetailsEnd')
+		self.con.register(self.commissionReportHandler, 'CommissionReport')
 
 		self.logger.debug("mxIBhandler connecting...")
 		self.con.connect()
@@ -191,13 +207,65 @@ class mxIBhandler(object):
 
 	def get_available_cash(self, currency = "USD"):
 		#self.__updatePortfolioEvent.wait()
-		sleep(10)
+		sleep(5)
 		if currency in self.available_cash:
-			return float(self.available_cash[currency])
+			if currency in self.buyingpower and self.buyingpower[currency] < self.available_cash[currency]:
+				self.logger.warning("buyingpower lower than available cash (short sells?), reducting cash for trades to buyingpower")
+				return float(self.buyingpower[currency])
+			else:
+				return float(self.available_cash[currency])
 		else:
 			return 0
 
+
+	def get_net_liquidation_value(self, currency = "USD"):
+		#self.__updatePortfolioEvent.wait()
+		sleep(5)
+		if currency in self.net_liquidation:
+			return float(self.net_liquidation[currency])
+		else:
+			return 0
+
+	def handler(self,msg):
+		self.logger.debug(msg)
+
+	def update_comissions(self,timeout=60):
+		self.logger.info("update_comissions")
+
+		#first, reset commission data not not count it twice
+		for i in self.log.keys():
+			self.log[i].commission = None
+
+
+		self.__SyncExecDetailsEvent.clear()
+		self.__SyncExecDetailsReqID = self.NextOrderID
+		self.NextOrderID += 1
+		self.con.reqExecutions(self.__SyncExecDetailsReqID,ExecutionFilter())
+		self.__SyncExecDetailsEvent.wait(timeout=timeout)
+		
+
+	def execDetailsHandler(self,msg):
+		self.logger.debug(msg)
+		self.logger.debug("execid %s, orderid %s",msg.execution.m_execId,msg.execution.m_orderId)
+		self.__MapExecIdtoOrderId[msg.execution.m_execId] = msg.execution.m_orderId
+
+	def execDetailsEndHandler(self,msg):
+		self.logger.info(msg)
+		if msg.reqId == self.__SyncExecDetailsReqID:
+			self.__SyncExecDetailsEvent.set()
+
+	def commissionReportHandler(self,msg):
+		self.logger.debug(msg)
+		if msg.commissionReport.m_execId in self.__MapExecIdtoOrderId:
+			orderid = self.__MapExecIdtoOrderId[msg.commissionReport.m_execId]
+			if orderid in self.log:
+				if self.log[orderid].commission == None:
+					self.log[orderid].commission = 0
+				self.log[orderid].commission += msg.commissionReport.m_commission
+
+
 	def updatePortfolioHandler(self,msg):
+		self.logger.debug(msg.contract.m_symbol)
 		self.logger.debug(msg)
 		self.__SyncStockGetEvent.clear()
 		if msg.position == 0: #TODO only works for long positions and stocks now
@@ -212,6 +280,7 @@ class mxIBhandler(object):
 
 	def orderStatusHandler(self,msg):
 		self.logger.debug(msg)
+		self.logger.info("mxIBhandler: %s orders open", len(self.openorders))
 		if (msg.status == "Filled") and msg.orderId in self.__MapToOriginalOrderID and self.__MapToOriginalOrderID[msg.orderId] in self.openorders:
 			OrigOrdierID = self.__MapToOriginalOrderID[msg.orderId]
 			self.log[OrigOrdierID].avg_fill_price = msg.avgFillPrice
@@ -236,11 +305,13 @@ class mxIBhandler(object):
 		self.NextOrderID = msg.orderId
 	
 	def errorHandler(self,msg):
+		self.logger.debug(msg)
 		if msg.errorCode==2110 or msg.errorCode == 2105:
 			self.__connected = False
 			self.logger.error(msg)
 		elif msg.errorCode==200:
-			msg.errorMsg += " ("+str(self.__SyncStockGetMultipleIDs[msg.id])+")" #add symbol
+			if msg.id in self.__SyncStockGetMultipleIDs:
+				msg.errorMsg += " ("+str(self.__SyncStockGetMultipleIDs[msg.id])+")" #add symbol
 			self.logger.error(msg)
 			if msg.id in self.__SyncStockGetMultipleIDs.keys():
 				self.__SyncStockGetMultiplePrice[self.__SyncStockGetMultipleIDs[msg.id]] = 0
@@ -349,16 +420,16 @@ class mxIBhandler(object):
 			if OrigOrdierID in self.openorders:
 				if self.openorders[OrigOrdierID].ordertype == "MKT":
 					if (msg.field == TickTypeBid and self.openorders[OrigOrdierID].action == "SELL") or (msg.field == TickTypeAsk and self.openorders[OrigOrdierID].action == "BUY"):
-						if (openorders[OrigOrdierID].action == "SELL" and msg.price >= self.openorders[OrigOrdierID].limitprice) or (self.openorders[OrigOrdierID].action == "BUY" and (msg.price <= self.openorders[OrigOrdierID].limitprice or self.openorders[OrigOrdierID].limitprice < 0)):
+						if (self.openorders[OrigOrdierID].action == "SELL" and msg.price >= self.openorders[OrigOrdierID].limitprice) or (self.openorders[OrigOrdierID].action == "BUY" and (msg.price <= self.openorders[OrigOrdierID].limitprice or self.openorders[OrigOrdierID].limitprice < 0)):
 							if self.openorders[OrigOrdierID].prev_close == None or ((self.openorders[OrigOrdierID].prev_close/float(msg.price) < 2.) and (self.openorders[OrigOrdierID].prev_close/float(msg.price) > 0.5)):
 								self.logger.warning("tickPriceHandler: not buying/selling %s consitency check failed (split?) prev_close %s current price %s" , self.openorders[OrigOrdierID].contract.m_symbol,self.openorders[OrigOrdierID].prev_close,msg.price) 
 								del self.openorders[OrigOrdierID]
-							elif msg.size < self.openorders[OrigOrdierID].vollume:
+							elif msg.field == TickTypeBidSize and msg.size < self.openorders[OrigOrdierID].vollume:
 								self.logger.debug("tickPriceHandler: not buying/selling %s vollume is too low", self.openorders[OrigOrdierID].contract.m_symbol)
 								del self.openorders[OrigOrdierID]
 							else:
 								contract = self.openorders[OrigOrdierID].contract
-								order = makeStkOrder(openorders[OrigOrdierID].vollume, self.openorders[OrigOrdierID].action, self._account, ordertype=self.openorders[OrigOrdierID].ordertype)
+								order = makeStkOrder(self.openorders[OrigOrdierID].vollume, self.openorders[OrigOrdierID].action, self._account, ordertype=self.openorders[OrigOrdierID].ordertype)
 								self.con.placeOrder(self.NextOrderID,contract,order)
 								self.__MapToOriginalOrderID[self.NextOrderID] = OrigOrdierID
 								self.NextOrderID += 1
@@ -419,7 +490,7 @@ class mxIBhandler(object):
 								self.logger.info("tickPriceHandler: placing order %s midpoint:%s %s ba_offset:%s bid:%s ask:%s", self.openorders[OrigOrdierID], midpoint, order.m_lmtPrice, self.openorders[OrigOrdierID].ba_offset, self.openorders[OrigOrdierID].bid, self.openorders[OrigOrdierID].ask)
 
 				else:
-					self.logger.error("tickPriceHandler: unknown order type %s", openorders[OrigOrdierID].ordertype)
+					self.logger.error("tickPriceHandler: unknown order type %s", self.openorders[OrigOrdierID].ordertype)
 					sys.exit()
 		#synchronous price request?
 		elif msg.tickerId == self.__SyncStockGetOrderID:
@@ -478,27 +549,33 @@ class mxIBhandler(object):
 		self.logger.debug(msg)
 		if msg.key == "CashBalance":
 			self.available_cash[msg.currency] = msg.value
+		if msg.key == "BuyingPower":
+			self.buyingpower[msg.currency] = msg.value
+		if msg.key == "NetLiquidationByCurrency":
+			self.net_liquidation[msg.currency] = msg.value
 
 	#get price info, then make market order if price is acceptable regarding the limitprice
-	def place_order_quote(self,contract,vollume,limitprice,action, unique_ID = "", prev_close = None):
+	def place_order_quote(self,contract,vollume,price,limitprice,action, unique_ID = "", prev_close = None):
 		if unique_ID == "":
 			unique_ID = current_milli_time
 		orderid = self.NextOrderID
-		self.openorders[orderid] = OpenOrder(contract,vollume,None,limitprice,action)
+		self.NextOrderID += 1
+		self.openorders[orderid] = OpenOrder(contract,vollume,price,limitprice,action)
 		self.openorders[orderid].ordertype = "MKT"
 		self.openorders[orderid].prev_close = prev_close
 		
-		self.__MapToOriginalOrderID[self.NextOrderID] = self.NextOrderID
-		self.con.reqMktData(self.NextOrderID, contract, '', True) #only request snapshot
+		self.__MapToOriginalOrderID[orderid] = orderid
+		self.con.reqMktData(orderid, contract, '', True) #only request snapshot
 
 		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = -1, limitprice = limitprice, unique_ID = unique_ID)
 		self.log[orderid].action = action
-		self.log[orderid].ordertype = self.openorders[self.NextOrderID].ordertype
+		self.log[orderid].ordertype = self.openorders[orderid].ordertype
+
+		self.logger.info("%s %s %s %s vollume: %s targeting price: %s limit: %s %s", orderid, unique_ID, action, contract.m_symbol, vollume, price, limitprice, self.openorders[orderid].ordertype)
 
 		sleep(2)
 
-		self.NextOrderID += 1
-		return self.NextOrderID-1
+		return orderid
 
 	#ba_offset: percantage of ba spread. eg. ask = 1.10 USD bid = 1.00 USD, ba_offset = 0.1 -> place limit order SELL at 1.09 USD
 	#limitprice: hard limit: don't buy or sell if over or under this price
@@ -536,6 +613,8 @@ class mxIBhandler(object):
 
 		self.openorders[orderid] = OpenOrder(contract,vollume,None,limitprice,action) #limitprice -1 -> check bid ask and place limit there
 		self.openorders[orderid].ordertype = "LMT"
+		self.openorders[orderid].adjust_periodical = False
+		self.openorders[orderid].market_data_subscribed = False
 
 		order = makeStkOrder(vollume, action, self._account, ordertype="LMT")
 
