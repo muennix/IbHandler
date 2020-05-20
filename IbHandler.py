@@ -660,8 +660,6 @@ class mxIBhandler(object):
 	def place_moc_order(self,contract,vollume,action, unique_ID, allow_short = False):
 		orderid = self.NextOrderID
 		self.NextOrderID += 1
-		order = makeStkOrder(vollume, action, self._account, ordertype="MOC")
-		order.m_outsideRth = False #does not make sense for MOC
 
 		if allow_short == False and action == "SELL":
 			if contract.m_symbol in self.__portfolio and self.__portfolio[contract.m_symbol].position < vollume:
@@ -676,6 +674,9 @@ class mxIBhandler(object):
 				self.logger.warning("No position of %s currently held and allow_short = False. Not placing order.",contract.m_symbol)
 				return -1
 
+		order = makeStkOrder(vollume, action, self._account, ordertype="MOC")
+		order.m_outsideRth = False #does not make sense for MOC
+		
 		self.logger.info("Placing MOC order for %s with id %s",contract.m_symbol, orderid)
 
 		self.openorders[orderid] = OpenOrder(contract,vollume,None,None,"BUY")
