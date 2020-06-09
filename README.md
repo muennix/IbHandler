@@ -91,7 +91,7 @@ At any point, open or partially executed orders are stored in the dict mxh.openo
 	
 Once fully executed (or cancelled by the exchange), they are removed from mxh.openorders, so you can use it to keep track of orders. More detailed information can be obtained through mxh.logger (see below), by overriding IbHandler.mxIBhandler.orderStatusHandler or by registering your own handler though mxh.con.register.
 
-###Advanced orders
+### Advanced orders
 Now, let's set the price in the middle of the bid/ask spread, but the order should not be placed if the current BID price is under $700
 
 	oid = mxh.place_limitorder_quote(contract,100,700,"BUY",ba_offset=0.5)
@@ -104,7 +104,7 @@ You can manually trigger the readjusting of orders placed by place_limitorder_qu
 
 	mxh.adjust_limits()
 
-###Further order types: 
+### Further order types: 
 
 Pegged MID (exchange is automatically changed to ISLAND):
 
@@ -114,7 +114,7 @@ MOC (market on close) order. Must be submitted 10 to 15 minutes before the marke
 	
 	oid = mxh.place_moc_order(contract,100,"BUY")
 
-###Logging
+### Logging
 
 The module implements the logging class. Default log-level is INFO, to change that, initialize by 
 
@@ -127,7 +127,7 @@ The logging instance is located at
 	
 in case you want to modify it directly, e.g., to divert the output to a file. 
 
-###Close connection
+### Close connection
 In order to gracefully close the connection and get (if applicable) an overview of currently open orders, call
 
 	mxh.release()
