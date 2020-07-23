@@ -222,6 +222,7 @@ class mxIBhandler(object):
 		#self.__updatePortfolioEvent.wait()
 		sleep(5)
 		if currency in self.net_liquidation:
+			self.logger.debug("NetLiquidation: %s %s", self.net_liquidation[currency], currency)
 			return float(self.net_liquidation[currency])
 		else:
 			return 0
