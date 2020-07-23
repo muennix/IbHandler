@@ -92,7 +92,7 @@ class LogEntry(object):
 		self.ordertype = None
 		self.ba_offset = None
 		self.unique_ID = unique_ID
-		self.commission = None
+		self.commission = 0
 		self.canceled = False
 
 
@@ -234,7 +234,7 @@ class mxIBhandler(object):
 
 		#first, reset commission data not not count it twice
 		for i in self.log.keys():
-			self.log[i].commission = None
+			self.log[i].commission = 0
 
 
 		self.__SyncExecDetailsEvent.clear()
