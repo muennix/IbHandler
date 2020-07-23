@@ -719,7 +719,7 @@ class mxIBhandler(object):
 		self.con.placeOrder(orderid ,contract,order)
 		self.__OrdersFinished.clear()
 
-		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = 0, limitprice = None, unique_ID = unique_ID)
+		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = targeted_price, limitprice = None, unique_ID = unique_ID)
 		self.log[orderid].action = action
 		self.log[orderid].ordertype = "MOC"
 
