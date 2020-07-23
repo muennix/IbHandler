@@ -229,8 +229,8 @@ class mxIBhandler(object):
 	def handler(self,msg):
 		self.logger.debug(msg)
 
-	def update_comissions(self,timeout=60):
-		self.logger.info("update_comissions")
+	def update_commissions(self,timeout=60):
+		self.logger.info("update_commissions")
 
 		#first, reset commission data not not count it twice
 		for i in self.log.keys():
@@ -240,7 +240,9 @@ class mxIBhandler(object):
 		self.__SyncExecDetailsEvent.clear()
 		self.__SyncExecDetailsReqID = self.NextOrderID
 		self.NextOrderID += 1
-		self.con.reqExecutions(self.__SyncExecDetailsReqID,ExecutionFilter())
+		exec_filter = ExecutionFilter()
+		exec_filter.clientId = self.clientId
+		self.con.reqExecutions(self.__SyncExecDetailsReqID,exec_filter)
 		self.__SyncExecDetailsEvent.wait(timeout=timeout)
 		
 
