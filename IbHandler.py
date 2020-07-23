@@ -244,6 +244,7 @@ class mxIBhandler(object):
 		exec_filter = ExecutionFilter()
 		exec_filter.clientId = self.clientId
 		self.con.reqExecutions(self.__SyncExecDetailsReqID,exec_filter)
+		sleep(10) #somtimes commissionReport are recvied after execDetailsEnd
 		self.__SyncExecDetailsEvent.wait(timeout=timeout)
 		
 
