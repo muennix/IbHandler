@@ -291,7 +291,7 @@ class mxIBhandler(object):
 		if (msg.status == "Filled") and msg.orderId in self.__MapToOriginalOrderID and self.__MapToOriginalOrderID[msg.orderId] in self.openorders:
 			OrigOrdierID = self.__MapToOriginalOrderID[msg.orderId]
 			self.log[OrigOrdierID].avg_fill_price = msg.avgFillPrice
-			self.log[OrigOrdierID].fill_date = datetime.datetime.today().isoformat()
+			self.log[OrigOrdierID].fill_date = datetime.datetime.today().date().isoformat()
 			if self.openorders[OrigOrdierID].market_data_subscribed == True:
 				self.con.cancelMktData(OrigOrdierID)
 			del self.openorders[OrigOrdierID]
@@ -318,12 +318,12 @@ class mxIBhandler(object):
 			self.logger.error(msg)
 		elif msg.errorCode==200:
 			if msg.id in self.__SyncStockGetMultipleIDs:
-				msg.errorMsg += " ("+str(self.__SyncStockGetMultipleIDs[msg.id])+")" #add symbol
+				msg.errorMsg += " ("+str(self.__SyncStockGetMultipleIDs[msg.id])+")" #add symbol if is was a request through getprices
 			self.logger.error(msg)
 			if msg.id in self.__SyncStockGetMultipleIDs.keys():
 				self.__SyncStockGetMultiplePrice[self.__SyncStockGetMultipleIDs[msg.id]] = 0
 				del self.__SyncStockGetMultipleIDs[msg.id]
-		elif msg.errorCode==2104 or msg.errorCode==2106 or msg.errorCode==2119:
+		elif msg.errorCode==2104 or msg.errorCode==2106 or msg.errorCode==2119 or msg.errorCode==2158:
 			self.logger.info(msg)
 		elif msg.errorCode==2107 or msg.errorCode==2108 or msg.errorCode==2109 or msg.errorCode==2110 or msg.errorCode==2100 or msg.errorCode==1102:
 			self.logger.warning(msg)
@@ -443,7 +443,7 @@ class mxIBhandler(object):
 								self.__OrdersFinished.clear()
 								self.logger.info("tickPriceHandler: placing order %s", self.openorders[OrigOrdierID])
 						else:
-							self.logger.warning("tickPriceHandler: not buying/selling %s targeted_price %s action: %s", self.openorders[OrigOrdierID].contract.m_symbol, self.openorders[OrigOrdierID].limitprice, self.openorders[OrigOrdierID].action)
+							self.logger.warning("tickPriceHandler: not buying/selling %s targeted_price %s worst accectable price %s action: %s", self.openorders[OrigOrdierID].contract.m_symbol, self.openorders[OrigOrdierID].price, self.openorders[OrigOrdierID].limitprice, self.openorders[OrigOrdierID].action)
 				
 				elif self.openorders[OrigOrdierID].ordertype == "LMT":
 					if msg.field == TickTypeBid:
