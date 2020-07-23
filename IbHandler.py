@@ -259,13 +259,16 @@ class mxIBhandler(object):
 			self.__SyncExecDetailsEvent.set()
 
 	def commissionReportHandler(self,msg):
-		self.logger.debug(msg)
+		self.logger.debug("commissionReport - execid: %s, commission: %s, currency: %s, realizedPNL: %s", msg.commissionReport.m_execId, msg.commissionReport.m_commission, msg.commissionReport.m_currency, msg.commissionReport.m_realizedPNL)
 		if msg.commissionReport.m_execId in self.__MapExecIdtoOrderId:
 			orderid = self.__MapExecIdtoOrderId[msg.commissionReport.m_execId]
 			if orderid in self.log:
-				if self.log[orderid].commission == None:
-					self.log[orderid].commission = 0
 				self.log[orderid].commission += msg.commissionReport.m_commission
+				self.logger.debug("commissionReport - %s (orderid: %s): Adding %s %s (%s total)", self.log[orderid].symbol, orderid, msg.commissionReport.m_commission, msg.commissionReport.m_currency, self.log[orderid].commission)
+			else:
+				self.logger.debug("execid %s is known (orderid %s), but no matching log found",msg.commissionReport.m_execId,orderid)
+		else:
+			self.logger.debug("execid %s is unknown (no matching orderid)",msg.commissionReport.m_execId)
 
 
 	def updatePortfolioHandler(self,msg):
