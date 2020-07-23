@@ -495,7 +495,11 @@ class mxIBhandler(object):
 									self.adjist_limits_thread = Timer(self.limit_adjust_interval, self.adjust_limits, ()).start()
 
 								self.logger.info("tickPriceHandler: placing order %s midpoint:%s %s ba_offset:%s bid:%s ask:%s", self.openorders[OrigOrdierID], midpoint, order.m_lmtPrice, self.openorders[OrigOrdierID].ba_offset, self.openorders[OrigOrdierID].bid, self.openorders[OrigOrdierID].ask)
-
+				elif self.openorders[OrigOrdierID].ordertype == "MOC":
+					if msg.field == TickTypeBid:
+						self.openorders[OrigOrdierID].bid = msg.price
+					elif msg.field == TickTypeAsk:
+						self.openorders[OrigOrdierID].ask = msg.price
 				else:
 					self.logger.error("tickPriceHandler: unknown order type %s", self.openorders[OrigOrdierID].ordertype)
 					sys.exit()
