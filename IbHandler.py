@@ -451,7 +451,7 @@ class mxIBhandler(object):
 					elif msg.field == TickTypeAsk:
 						self.openorders[OrigOrdierID].ask = msg.price
 
-					if self.openorders[OrigOrdierID].ask is not None and self.openorders[OrigOrdierID].ask is not None:
+					if self.openorders[OrigOrdierID].ask is not None and self.openorders[OrigOrdierID].bid is not None:
 						#calculate midpoint in case ba_offset was set
 						midpoint = self._calc_midpoint(self.openorders[OrigOrdierID].bid,self.openorders[OrigOrdierID].ask,self.openorders[OrigOrdierID].ba_offset,self.openorders[OrigOrdierID].action,oderid=OrigOrdierID)
 
