@@ -697,6 +697,12 @@ class mxIBhandler(object):
 				self.logger.warning("No position of %s currently held and allow_short = False. Not placing order.",contract.m_symbol)
 				return -1
 
+			if action == "SELL": # check if there are no open orders resulting in short position
+				open_order_vollume = self.get_open_order_vollume(contract.m_symbol,"MOC")
+				if vollume + open_order_vollume < 0:
+					self.logger.warning("No position of %s currently held, or open SELL ordersm and allow_short = False. Not placing order.",contract.m_symbol)
+					return -1
+
 		order = makeStkOrder(vollume, action, self._account, ordertype="MOC")
 		order.m_outsideRth = False #does not make sense for MOC
 		
