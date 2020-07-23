@@ -578,7 +578,7 @@ class mxIBhandler(object):
 		self.__MapToOriginalOrderID[orderid] = orderid
 		self.con.reqMktData(orderid, contract, '', True) #only request snapshot
 
-		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = -1, limitprice = limitprice, unique_ID = unique_ID)
+		self.log[orderid] = LogEntry(timestamp = datetime.datetime.today().isoformat(), symbol=contract.m_symbol, ordervollume = vollume, targeted_price = price, limitprice = limitprice, unique_ID = unique_ID)
 		self.log[orderid].action = action
 		self.log[orderid].ordertype = self.openorders[orderid].ordertype
 
@@ -666,6 +666,18 @@ class mxIBhandler(object):
 
 		return orderid
 
+	def get_open_order_vollume(self,symbol,ordertype):
+		vollume = 0
+		try:
+			for orderid in self.openorders:
+				if self.openorders[orderid].contract.m_symbol == symbol and self.openorders[orderid].ordertype == ordertype:
+					if self.openorders[orderid].action == "BUY":
+						vollume += self.openorders[orderid].vollume
+					elif self.openorders[orderid].action == "SELL":
+						vollume -= self.openorders[orderid].vollume
+		except:
+			self.logger.warning("exception in get_open_order_vollume")
+		return vollume
 
 	#market on close
 	def place_moc_order(self,contract,vollume,action, unique_ID, allow_short = False):
@@ -681,7 +693,7 @@ class mxIBhandler(object):
 				else:
 					self.logger.warning("Reducing MOC order for %s to %s (position currently held) as no short selling is allowed",contract.m_symbol, this_vol)
 					vollume = self.__portfolio[contract.m_symbol].position
-			elif  contract.m_symbol not in self.__portfolio or self.__portfolio[contract.m_symbol].position == 0:
+			elif contract.m_symbol not in self.__portfolio or self.__portfolio[contract.m_symbol].position == 0:
 				self.logger.warning("No position of %s currently held and allow_short = False. Not placing order.",contract.m_symbol)
 				return -1
 
