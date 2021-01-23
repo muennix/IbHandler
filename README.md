@@ -1,7 +1,7 @@
 IbHandler
 =================================================================
 
-An easy-to-use Python handler to the Interactive Brokers trading system.
+An easy-to-use Python handler to the Interactive Brokers trading system for Python 2.x.
 
 released 10 Jan 2016
 
